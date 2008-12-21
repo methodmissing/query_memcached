@@ -87,7 +87,8 @@ module ActiveRecord
       alias_method_chain :execute, :clean_query_cache
       
     end
-    
+
+  if ActiveRecord::ConnectionAdapters.const_defined?( 'PostgreSQLAdapter' )    
     class PostgreSQLAdapter < AbstractAdapter
 
       def execute_with_clean_query_cache(*args)
@@ -103,6 +104,7 @@ module ActiveRecord
       alias_method_chain :execute, :clean_query_cache
       
     end
+  end
     
     module QueryCache
     
