@@ -18,10 +18,14 @@ module ActiveRecord
 
     class << self
             
+      def memcached_store?
+        ::Rails.cache.is_a?(ActiveSupport::Cache::MemCacheStore) || ::Rails.cache.is_a?(ActiveSupport::Cache::MemcachedStore)
+      end      
+            
       # put this class method at the top of your AR model to enable memcache for the queryCache, 
       # otherwise it will use standard query cache
       def enable_memcache_querycache(options = {})
-        if ActionController::Base.perform_caching && defined?(::Rails.cache) && ::Rails.cache.is_a?(ActiveSupport::Cache::MemCacheStore)
+        if ActionController::Base.perform_caching && defined?(::Rails.cache) && memcached_store?
           options[:expires_in] ||= 90.minutes
           self.enableMemcacheQueryForModels[ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s] = options
         else
