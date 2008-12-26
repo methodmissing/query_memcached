@@ -83,7 +83,8 @@ module ActiveRecord
         if sql =~ /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i
           # can only modify one table at a time...so stop after matching the first table name
           table_name = ActiveRecord::Base.extract_table_names(sql).first
-          ActiveRecord::Base.increase_version!(table_name)
+          version = ActiveRecord::Base.increase_version!(table_name)
+          ActiveRecord::Base.logger.info "** Increase cache version to #{version.inspect} [ #{sql.inspect} ]"
         end
         execute_without_clean_query_cache(*args)
       end
