@@ -16,16 +16,24 @@ module ActiveRecord
     self.table_names = /#{connection.tables.sort_by { |c| c.length }.join('|')}/i
     self.enableMemcacheQueryForModels ||= {}
 
+    GLOBAL_CACHE_VERSION_KEY = 'version'.freeze
+
+    STRIP_QUOTE_REGEX = /`/.freeze
+
     class << self
             
       def memcached_store?
         ::Rails.cache.is_a?(ActiveSupport::Cache::MemCacheStore) || ::Rails.cache.is_a?(ActiveSupport::Cache::MemcachedStore)
       end      
             
+      def perform_caching?
+        ::ActionController::Base.perform_caching && defined?(::Rails.cache)
+      end      
+            
       # put this class method at the top of your AR model to enable memcache for the queryCache, 
       # otherwise it will use standard query cache
       def enable_memcache_querycache(options = {})
-        if ActionController::Base.perform_caching && defined?(::Rails.cache) && memcached_store?
+        if perform_caching? && memcached_store?
           options[:expires_in] ||= 90.minutes
           self.enableMemcacheQueryForModels[ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s] = options
         else
@@ -46,7 +54,9 @@ module ActiveRecord
         "#{global_cache_version_key}/#{table_name || self.table_name}"
       end
 
-      def global_cache_version_key; 'version' end
+      def global_cache_version_key 
+        GLOBAL_CACHE_VERSION_KEY
+      end
 
       # Increment the class version key number
       def increase_version!(table_name = nil)
@@ -56,12 +66,13 @@ module ActiveRecord
         else
           ::Rails.cache.write(key, 1)
         end
+        r || 1
       end
       
       # Given a sql query this method extract all the table names of the database affected by the query
       # thanks to the regular expression we have generated on the load of the plugin
       def extract_table_names(sql)
-        sql.gsub(/`/,'').scan(self.table_names).map {|t| t.strip}.uniq
+        sql.gsub(STRIP_QUOTE_REGEX,'').scan(self.table_names).map {|t| t.strip}.uniq
       end
 
     end
@@ -76,15 +87,17 @@ module ActiveRecord
 
     class MysqlAdapter < AbstractAdapter
       
+      DIRTIES_QUERY_CACHE_REGEX = /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i.freeze
+      
       # alias_method_chain for expiring cache if necessary
       def execute_with_clean_query_cache(*args)
         return execute_without_clean_query_cache(*args) unless self.memcache_query_cache_options && query_cache_enabled
         sql = args[0].strip
-        if sql =~ /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i
+        if sql =~ DIRTIES_QUERY_CACHE_REGEX
           # can only modify one table at a time...so stop after matching the first table name
           table_name = ActiveRecord::Base.extract_table_names(sql).first
-          ActiveRecord::Base.increase_version!(table_name)
-          ActiveRecord::Base.logger.info "** Increased cache version of #{table_name} #{version.inspect} [ #{sql.inspect} ]"
+          version = ActiveRecord::Base.increase_version!(table_name)
+          ActiveRecord::Base.logger.info "** Increased cache version of #{table_name} to #{version.inspect} [ #{sql.inspect} ]"
         end
         execute_without_clean_query_cache(*args)
       end
@@ -96,10 +109,12 @@ module ActiveRecord
   if ActiveRecord::ConnectionAdapters.const_defined?( 'PostgreSQLAdapter' )    
     class PostgreSQLAdapter < AbstractAdapter
 
+      DIRTIES_QUERY_CACHE_REGEX = /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i.freeze
+
       def execute_with_clean_query_cache(*args)
         return execute_without_clean_query_cache(*args) unless self.memcache_query_cache_options && query_cache_enabled
         sql = args[0].strip
-        if sql =~ /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i
+        if sql =~ DIRTIES_QUERY_CACHE_REGEX 
           table_name = ActiveRecord::Base.extract_table_names(sql).first
           ActiveRecord::Base.increase_version!(table_name)
         end
