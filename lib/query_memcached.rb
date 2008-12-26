@@ -8,7 +8,7 @@ module ActiveRecord
     # Its main purpose  is to detect all the tables that a query affects.
     # It is build in a special way:
     #   - first we get all the tables
-    #   - then we sort them from major to minor lenght, in order to detect tables which name is a composition of two
+    #   - then we sort them from major to minor length, in order to detect tables which name is a composition of two
     #     names, i.e, posts, comments and comments_posts. It is for make easier the regular expression
     #   - and finally, the regular expression is built
     cattr_accessor :table_names, :enableMemcacheQueryForModels
@@ -83,8 +83,8 @@ module ActiveRecord
         if sql =~ /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i
           # can only modify one table at a time...so stop after matching the first table name
           table_name = ActiveRecord::Base.extract_table_names(sql).first
-          version = ActiveRecord::Base.increase_version!(table_name)
-          ActiveRecord::Base.logger.info "** Increase cache version to #{version.inspect} [ #{sql.inspect} ]"
+          ActiveRecord::Base.increase_version!(table_name)
+          ActiveRecord::Base.logger.info "** Increased cache version of #{table_name} #{version.inspect} [ #{sql.inspect} ]"
         end
         execute_without_clean_query_cache(*args)
       end
