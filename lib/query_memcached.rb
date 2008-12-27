@@ -27,7 +27,7 @@ module ActiveRecord
       def enable_memcache_querycache(options = {})
         if perform_caching? && memcached_store?
           options[:expires_in] ||= 90.minutes
-          self.enableMemcacheQueryForModels[ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s] = options
+          self.enableMemcacheQueryForModels[humanized_class_name()] = options
         else
           warn_cache_disabled!
         end
@@ -76,8 +76,12 @@ module ActiveRecord
         end      
         
         def warn_cach_disabled!
-          warning = "[Query memcached WARNING] Disabled for #{ActiveRecord::Base.send(:class_name_of_active_record_descendant, self)} -- Memcache for QueryCache is not enabled for this model because caching is not turned on, Rails.cache is not defined, or cache engine is not mem_cache_store"
+          warning = "[Query memcached WARNING] Disabled for #{humanized_class_name()} -- Memcache for QueryCache is not enabled for this model because caching is not turned on, Rails.cache is not defined, or cache engine is not mem_cache_store"
           ActiveRecord::Base.logger.error warning
+        end
+        
+        def humanized_class_name 
+          ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s
         end
         
     end
@@ -161,20 +165,10 @@ module ActiveRecord
         #  - if in @query_cache (memory of local app server) we prefer this
         #  - else if exists in Memcached we prefer that
         #  - else perform query in database and save memory caches
-        result =
-          if (query_cache_enabled || self.memcache_query_cache_options) && @query_cache.has_key?(sql)
-            log_info(sql, "CACHE", 0.0)
-            @query_cache[sql]
-          elsif self.memcache_query_cache_options && cached_result = ::Rails.cache.read(query_key(sql), self.memcache_query_cache_options)
-            log_info(sql, "MEMCACHE", 0.0)
-            @query_cache[sql] = cached_result
-          else
-            query_result = yield
-            @query_cache[sql] = query_result if query_cache_enabled || self.memcache_query_cache_options            
-            ::Rails.cache.write(query_key(sql), query_result, self.memcache_query_cache_options) if self.memcache_query_cache_options
-            query_result
-          end
-    
+        result = get_local_cached_sql( sql ) ||
+                 get_remote_cached_sql( sql ) ||
+                 set_cached_sql( sql, yield )
+   
         if Array === result
           result.collect { |row| row.dup }
         else
@@ -182,6 +176,26 @@ module ActiveRecord
         end
       rescue TypeError
         result
+      end
+    
+      def get_local_cached_sql( sql )
+        if (query_cache_enabled || self.memcache_query_cache_options) && @query_cache.has_key?(sql)
+          log_info(sql, "CACHE", 0.0)
+          @query_cache[sql]
+        end  
+      end
+      
+      def get_remote_cached_sql( sql )
+        if self.memcache_query_cache_options && cached_result = ::Rails.cache.read(query_key(sql), self.memcache_query_cache_options)
+          log_info(sql, "MEMCACHE", 0.0)
+          @query_cache[sql] = cached_result
+        end  
+      end
+      
+      def set_cached_sql( sql, query_result )
+        @query_cache[sql] = query_result if query_cache_enabled || self.memcache_query_cache_options            
+        ::Rails.cache.write(query_key(sql), query_result, self.memcache_query_cache_options) if self.memcache_query_cache_options
+        query_result
       end
     
       # Transforms a sql query into a valid key for Memcache
