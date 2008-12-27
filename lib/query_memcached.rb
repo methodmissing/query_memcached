@@ -75,7 +75,7 @@ module ActiveRecord
           ::ActionController::Base.perform_caching && defined?(::Rails.cache)
         end      
         
-        def warn_cach_disabled!
+        def warn_cache_disabled!
           warning = "[Query memcached WARNING] Disabled for #{humanized_class_name()} -- Memcache for QueryCache is not enabled for this model because caching is not turned on, Rails.cache is not defined, or cache engine is not mem_cache_store"
           ActiveRecord::Base.logger.error warning
         end
