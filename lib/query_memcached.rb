@@ -104,7 +104,6 @@ module ActiveRecord
           # can only modify one table at a time...so stop after matching the first table name
           table_name = ActiveRecord::Base.extract_table_names(sql).first
           version = ActiveRecord::Base.increase_version!(table_name)
-          clear_query_cache
           ActiveRecord::Base.logger.info "** Increased cache version of #{table_name} to #{version.inspect} [ #{sql.inspect} ]"
         end
         execute_without_clean_query_cache(*args)
@@ -198,7 +197,9 @@ module ActiveRecord
         # the version numbers of each table
         version_number = get_cache_version # global version 
         table_names.each { |table_name| version_number += get_cache_version(table_name) }
-        "#{version_number}_#{Digest::MD5.hexdigest(sql)}"
+        query_key = "#{version_number}_#{Digest::MD5.hexdigest(sql)}"
+        ActiveRecord::Base.logger.info query_key
+        query_key
       end
     
       # Returns the cache version of a table_name. If table_name is empty its the global version
