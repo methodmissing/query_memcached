@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-class QueryCacheTest < Test::Unit::TestCase
+class QueryCacheTest < ActiveSupport::TestCase
   
   fixtures :tasks, :topics, :categories, :posts, :categories_posts
   
@@ -57,7 +57,7 @@ end
 
 uses_mocha 'QueryCacheExpiryTest' do
 
-class QueryCacheExpiryTest < Test::Unit::TestCase
+class QueryCacheExpiryTest < ActiveSupport::TestCase
   fixtures :tasks
   
   def setup
