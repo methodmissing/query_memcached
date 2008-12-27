@@ -93,26 +93,30 @@ module ActiveRecord
     class AbstractAdapter
       attr_accessor :memcache_query_cache_options
     
+      DIRTIES_QUERY_CACHE_REGEX = /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i.freeze
+    
       def increase_version!( sql ) 
         # can only modify one table at a time...so stop after matching the first table name
         table_name = ActiveRecord::Base.extract_table_names(sql).first
         ActiveRecord::Base.increase_version!(table_name)
       end
     
-    end
-
-    class MysqlAdapter < AbstractAdapter
-      
-      DIRTIES_QUERY_CACHE_REGEX = /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i.freeze
-      
-      # alias_method_chain for expiring cache if necessary
-      def execute_with_clean_query_cache(*args)
+      def execute_with_clean_query_cache!(*args)
         return execute_without_clean_query_cache(*args) unless self.memcache_query_cache_options && query_cache_enabled
         sql = args[0].strip
         if sql =~ DIRTIES_QUERY_CACHE_REGEX
           increase_version!( sql )
         end
         execute_without_clean_query_cache(*args)
+      end      
+    
+    end
+
+    class MysqlAdapter < AbstractAdapter
+      
+      # alias_method_chain for expiring cache if necessary
+      def execute_with_clean_query_cache(*args)
+        execute_with_clean_query_cache!(*args)
       end
 
       alias_method_chain :execute, :clean_query_cache
@@ -122,15 +126,8 @@ module ActiveRecord
   if ActiveRecord::ConnectionAdapters.const_defined?( 'PostgreSQLAdapter' )    
     class PostgreSQLAdapter < AbstractAdapter
 
-      DIRTIES_QUERY_CACHE_REGEX = /^(INSERT|UPDATE|ALTER|DROP|DELETE)/i.freeze
-
       def execute_with_clean_query_cache(*args)
-        return execute_without_clean_query_cache(*args) unless self.memcache_query_cache_options && query_cache_enabled
-        sql = args[0].strip
-        if sql =~ DIRTIES_QUERY_CACHE_REGEX 
-          increase_version!( sql )
-        end
-        execute_without_clean_query_cache(*args)
+        execute_with_clean_query_cache!(*args)
       end
       
       alias_method_chain :execute, :clean_query_cache
