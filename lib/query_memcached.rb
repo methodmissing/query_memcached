@@ -206,17 +206,18 @@ module ActiveRecord
       def get_cache_version(table_name = nil)
         key_class_version = table_name ? ActiveRecord::Base.cache_version_key(table_name) : ActiveRecord::Base.global_cache_version_key
         ActiveRecord::Base.logger.info "** Key class version is #{key_class_version.inspect}"
+        ActiveRecord::Base.logger.info "** @cache_version = #{@cache_version.inspect}"
         if @cache_version && @cache_version[key_class_version]
-          ActiveRecord::Base.logger.info "** Cache version is #{@cache_version[key_class_version].inspect}"
+          ActiveRecord::Base.logger.info "** A, Cache version is #{@cache_version[key_class_version].inspect}"
           @cache_version[key_class_version]
         elsif version = ::Rails.cache.read(key_class_version)
           @cache_version[key_class_version] = version if @cache_version
-          ActiveRecord::Base.logger.info "** Cache version is #{version.inspect}"
+          ActiveRecord::Base.logger.info "** B, Cache version is #{version.inspect}"
           version
         else
           @cache_version[key_class_version] = 0 if @cache_version
           ::Rails.cache.write(key_class_version, 0)
-          ActiveRecord::Base.logger.info "** Cache version is 0"
+          ActiveRecord::Base.logger.info "** C, Cache version is 0"
           0
         end
       end
