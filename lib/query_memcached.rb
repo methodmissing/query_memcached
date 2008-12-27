@@ -35,7 +35,7 @@ module ActiveRecord
       
       def connection_with_memcache_query_cache
         conn = connection_without_memcache_query_cache
-        conn.memcache_query_cache_options = self.enableMemcacheQueryForModels[self.to_s]
+        conn.memcache_query_cache_options = self.enableMemcacheQueryForModels[humanized_class_name()]
         conn
       end
       
@@ -81,7 +81,11 @@ module ActiveRecord
         end
         
         def humanized_class_name 
-          ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s
+          begin
+            ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s
+          rescue => exception
+            ''
+          end  
         end
         
     end
