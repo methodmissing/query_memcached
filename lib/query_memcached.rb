@@ -161,8 +161,8 @@ module ActiveRecord
         result =
           if (query_cache_enabled || self.memcache_query_cache_options) && @query_cache.has_key?(sql)
             log_info(sql, "CACHE", 0.0)
-            @query_cache[sql]
             ActiveRecord::Base.logger.info "** In Query Cache : #{sql.inspect}"
+            @query_cache[sql]
           elsif self.memcache_query_cache_options && cached_result = ::Rails.cache.read(query_key(sql), self.memcache_query_cache_options)
             log_info(sql, "MEMCACHE", 0.0)
             ActiveRecord::Base.logger.info "** Memcache : #{sql.inspect}"
