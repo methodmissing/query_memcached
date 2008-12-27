@@ -92,6 +92,13 @@ module ActiveRecord
     
     class AbstractAdapter
       attr_accessor :memcache_query_cache_options
+    
+      def increase_version!( sql ) 
+        # can only modify one table at a time...so stop after matching the first table name
+        table_name = ActiveRecord::Base.extract_table_names(sql).first
+        ActiveRecord::Base.increase_version!(table_name)
+      end
+    
     end
 
     class MysqlAdapter < AbstractAdapter
@@ -103,9 +110,7 @@ module ActiveRecord
         return execute_without_clean_query_cache(*args) unless self.memcache_query_cache_options && query_cache_enabled
         sql = args[0].strip
         if sql =~ DIRTIES_QUERY_CACHE_REGEX
-          # can only modify one table at a time...so stop after matching the first table name
-          table_name = ActiveRecord::Base.extract_table_names(sql).first
-          ActiveRecord::Base.increase_version!(table_name)
+          increase_version!( sql )
         end
         execute_without_clean_query_cache(*args)
       end
@@ -123,8 +128,7 @@ module ActiveRecord
         return execute_without_clean_query_cache(*args) unless self.memcache_query_cache_options && query_cache_enabled
         sql = args[0].strip
         if sql =~ DIRTIES_QUERY_CACHE_REGEX 
-          table_name = ActiveRecord::Base.extract_table_names(sql).first
-          ActiveRecord::Base.increase_version!(table_name)
+          increase_version!( sql )
         end
         execute_without_clean_query_cache(*args)
       end
