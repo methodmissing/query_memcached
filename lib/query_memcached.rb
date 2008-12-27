@@ -21,15 +21,7 @@ module ActiveRecord
     STRIP_QUOTE_REGEX = /`/.freeze
 
     class << self
-            
-      def memcached_store?
-        ::Rails.cache.is_a?(ActiveSupport::Cache::MemCacheStore) || ::Rails.cache.is_a?(ActiveSupport::Cache::MemcachedStore)
-      end      
-            
-      def perform_caching?
-        ::ActionController::Base.perform_caching && defined?(::Rails.cache)
-      end      
-            
+                        
       # put this class method at the top of your AR model to enable memcache for the queryCache, 
       # otherwise it will use standard query cache
       def enable_memcache_querycache(options = {})
@@ -37,8 +29,7 @@ module ActiveRecord
           options[:expires_in] ||= 90.minutes
           self.enableMemcacheQueryForModels[ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s] = options
         else
-          warning = "[Query memcached WARNING] Disabled for #{ActiveRecord::Base.send(:class_name_of_active_record_descendant, self)} -- Memcache for QueryCache is not enabled for this model because caching is not turned on, Rails.cache is not defined, or cache engine is not mem_cache_store"
-          ActiveRecord::Base.logger.error warning
+          warn_cache_disabled!
         end
       end
       
@@ -76,6 +67,21 @@ module ActiveRecord
         sql.gsub(STRIP_QUOTE_REGEX,'').scan(self.table_names).map {|t| t.strip}.uniq
       end
 
+      private 
+        
+        def memcached_store?
+          ::Rails.cache.is_a?(ActiveSupport::Cache::MemCacheStore) || ::Rails.cache.is_a?(ActiveSupport::Cache::MemcachedStore)
+        end      
+            
+        def perform_caching?
+          ::ActionController::Base.perform_caching && defined?(::Rails.cache)
+        end      
+        
+        def warn_cach_disabled!
+          warning = "[Query memcached WARNING] Disabled for #{ActiveRecord::Base.send(:class_name_of_active_record_descendant, self)} -- Memcache for QueryCache is not enabled for this model because caching is not turned on, Rails.cache is not defined, or cache engine is not mem_cache_store"
+          ActiveRecord::Base.logger.error warning
+        end
+        
     end
 
   end
