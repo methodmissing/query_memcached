@@ -62,11 +62,12 @@ module ActiveRecord
       def increase_version!(table_name = nil)
         key = cache_version_key(table_name)
         if r = ::Rails.cache.read(key)
-          ::Rails.cache.write(key, r.to_i + 1)
+          version = r.to_i + 1
         else
-          ::Rails.cache.write(key, 1)
+          version = 1
         end
-        r || 1
+        ::Rails.cache.write(key, version)
+        version
       end
       
       # Given a sql query this method extract all the table names of the database affected by the query
@@ -161,11 +162,14 @@ module ActiveRecord
           if (query_cache_enabled || self.memcache_query_cache_options) && @query_cache.has_key?(sql)
             log_info(sql, "CACHE", 0.0)
             @query_cache[sql]
+            ActiveRecord::Base.logger.info "** In Query Cache : #{sql.inspect}"
           elsif self.memcache_query_cache_options && cached_result = ::Rails.cache.read(query_key(sql), self.memcache_query_cache_options)
             log_info(sql, "MEMCACHE", 0.0)
+            ActiveRecord::Base.logger.info "** Memcache : #{sql.inspect}"
             @query_cache[sql] = cached_result
           else
             query_result = yield
+            ActiveRecord::Base.logger.info "** From DB : #{sql.inspect}"
             @query_cache[sql] = query_result if query_cache_enabled || self.memcache_query_cache_options            
             ::Rails.cache.write(query_key(sql), query_result, self.memcache_query_cache_options) if self.memcache_query_cache_options
             query_result
@@ -195,14 +199,18 @@ module ActiveRecord
       # We prefer to search for this key first in memory and then in Memcache
       def get_cache_version(table_name = nil)
         key_class_version = table_name ? ActiveRecord::Base.cache_version_key(table_name) : ActiveRecord::Base.global_cache_version_key
+        ActiveRecord::Base.logger.info "** Key class version is #{key_class_version.inspect}"
         if @cache_version && @cache_version[key_class_version]
+          ActiveRecord::Base.logger.info "** Cache version is #{@cache_version[key_class_version].inspect}"
           @cache_version[key_class_version]
         elsif version = ::Rails.cache.read(key_class_version)
           @cache_version[key_class_version] = version if @cache_version
+          ActiveRecord::Base.logger.info "** Cache version is #{version.inspect}"
           version
         else
           @cache_version[key_class_version] = 0 if @cache_version
           ::Rails.cache.write(key_class_version, 0)
+          ActiveRecord::Base.logger.info "** Cache version is 0"
           0
         end
       end
