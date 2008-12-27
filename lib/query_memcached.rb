@@ -84,7 +84,7 @@ module ActiveRecord
           begin
             ActiveRecord::Base.send(:class_name_of_active_record_descendant, self).to_s
           rescue => exception
-            ''
+            nil
           end  
         end
         
