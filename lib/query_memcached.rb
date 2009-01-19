@@ -1,5 +1,3 @@
-require 'digest/md5'
-
 module ActiveRecord
   
   class Base
@@ -141,6 +139,14 @@ module ActiveRecord
     
     module QueryCache
     
+      DIGEST = begin
+                 require 'openssl'
+                 OpenSSL::Digest::MD5
+               rescue LoadError
+                 require 'digest/md5'
+                 Digest::MD5 
+               end
+    
       # Enable the query cache within the block
       def cache
         old, @query_cache_enabled = @query_cache_enabled, true
@@ -210,7 +216,7 @@ module ActiveRecord
         # the version numbers of each table
         version_number = get_cache_version # global version 
         table_names.each { |table_name| version_number += get_cache_version(table_name) }
-        "#{version_number}_#{Digest::MD5.hexdigest(sql)}"
+        "#{version_number}_#{DIGEST.hexdigest(sql)}"
       end
     
       # Returns the cache version of a table_name. If table_name is empty its the global version
