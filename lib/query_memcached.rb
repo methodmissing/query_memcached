@@ -125,6 +125,18 @@ module ActiveRecord
       
     end
 
+  if ActiveRecord::ConnectionAdapters.const_defined?( 'MysqlplusAdapter' )    
+    class MysqlplusAdapter < AbstractAdapter
+
+      def execute_with_clean_query_cache(*args)
+        execute_with_clean_query_cache!(*args)
+      end
+
+      alias_method_chain :execute, :clean_query_cache
+
+    end
+  end
+
   if ActiveRecord::ConnectionAdapters.const_defined?( 'PostgreSQLAdapter' )    
     class PostgreSQLAdapter < AbstractAdapter
 
