@@ -36,7 +36,9 @@ ActiveRecord::Base.connection.class.class_eval do
 
   def execute_with_counting(sql, name = nil, &block)
     $query_count ||= 0
-    $query_count  += 1 unless IGNORED_SQL.any? { |r| sql =~ r }
+    unless IGNORED_SQL.any? { |r| sql =~ r }
+      $query_count  += 1
+    end
     execute_without_counting(sql, name, &block)
   end
 
