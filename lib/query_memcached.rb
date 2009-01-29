@@ -126,7 +126,7 @@ module ActiveRecord
     end
 
   if ActiveRecord::ConnectionAdapters.const_defined?( 'MysqlplusAdapter' )    
-    class MysqlplusAdapter < AbstractAdapter
+    class MysqlplusAdapter < MysqlAdapter
 
       def execute_with_clean_query_cache(*args)
         execute_with_clean_query_cache!(*args)
